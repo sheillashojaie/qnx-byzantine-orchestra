@@ -85,8 +85,7 @@ int main(int argc, char *argv[]) {
 
     // Read notes from the selected file
     const char *notes[MAX_MUSICIANS][MAX_NOTES];
-    int num_notes = read_notes_from_file(filename, musician_names, notes);
-    if (num_notes == -1) {
+    if (read_notes_from_file(filename, musician_names, notes) == -1) {
         printf("Failed to read notes from file\n");
         return 1;
     }
@@ -113,48 +112,36 @@ int main(int argc, char *argv[]) {
         if (musicians[i].chid == -1) {
             perror("Could not create musician channel");
             // Clean up previously created channels
-            for (int j = 0; j < i; j++) {
-                ChannelDestroy(musicians[j].chid);
-            }
+            for (int j = 0; j < i; j++) ChannelDestroy(musicians[j].chid);
             ChannelDestroy(conductor_chid);
             return 1;
         }
 
         // Pre-establish connection to conductor
-        musicians[i].coid_to_conductor = ConnectAttach(0, 0, conductor_chid, 0,
-                0);
+        musicians[i].coid_to_conductor = ConnectAttach(0, 0, conductor_chid, 0, 0);
         if (musicians[i].coid_to_conductor == -1) {
             perror("Could not create connection to conductor");
-            for (int j = 0; j <= i; j++) {
-                ChannelDestroy(musicians[j].chid);
-            }
+            for (int j = 0; j <= i; j++) ChannelDestroy(musicians[j].chid);
             ChannelDestroy(conductor_chid);
             return 1;
         }
-    }
 
-    // Pre-establish conductor's connections to all musicians
-    for (int i = 0; i < num_musicians; i++) {
+        // Pre-establish conductor's connection to musician
         coids_to_musicians[i] = ConnectAttach(0, 0, musicians[i].chid, 0, 0);
         if (coids_to_musicians[i] == -1) {
             perror("Conductor could not create connection to musician");
             // Clean up
-            for (int j = 0; j < i; j++) {
+            for (int j = 0; j <= i; j++) {
                 ConnectDetach(coids_to_musicians[j]);
-            }
-            for (int j = 0; j < num_musicians; j++) {
                 ConnectDetach(musicians[j].coid_to_conductor);
                 ChannelDestroy(musicians[j].chid);
             }
             ChannelDestroy(conductor_chid);
             return 1;
         }
-    }
 
-    // Create threads for musicians
-    for (int i = 0; i < num_musicians; i++) {
-        pthread_create(&musicians[i].thread, NULL, musician_thread,
-                &musicians[i]);
+        // Create musician thread
+        pthread_create(&musicians[i].thread, NULL, musician_thread, &musicians[i]);
     }
 
     sleep(1);
@@ -162,13 +149,10 @@ int main(int argc, char *argv[]) {
     // Create conductor thread
     pthread_t conductor;
     pthread_create(&conductor, NULL, conductor_thread, NULL);
-
-    // Wait for conductor thread to finish
     pthread_join(conductor, NULL);
 
     // Signal threads to terminate
     program_running = false;
-
     sleep(1);
 
     // Clean up
@@ -184,175 +168,127 @@ int main(int argc, char *argv[]) {
 }
 
 void* conductor_thread(void *unused_arg) {
-	(void) unused_arg;
+    (void)unused_arg;
 
-	int pulse_count = 0;
-	int max_pulses = 16;
+    for (int pulse_count = 0; pulse_count < 16 && program_running; pulse_count++) {
+        printf("\n--- Pulse %d ---\n", pulse_count + 1);
 
-	while (pulse_count < max_pulses && program_running) {
-		pulse_count++;
+        pulse_msg_t msg = { .type = 1 }; // Pulse
+        for (int i = 0; i < num_musicians; i++) {
+            if (MsgSend(coids_to_musicians[i], &msg, sizeof(msg), NULL, 0) == -1) {
+                printf("Conductor: Failed to send message to %s: %s\n", musicians[i].name, strerror(errno));
+            }
+        }
+        // Sleep for one beat
+        usleep((60.0 / conductor_bpm) * 1000000);
 
-		printf("\n--- Pulse %d ---\n", pulse_count);
+        // Collect reports from musicians
+        double total_reported_bpm = 0;
+        int reporting_musicians = 0;
+        time_t start_report_time = time(NULL);
 
-		pulse_msg_t msg;
-		msg.type = 1; // Pulse
+        while (reporting_musicians < num_musicians && time(NULL) - start_report_time < 5) {
+            pulse_msg_t msg;
+            int rcvid = MsgReceive(conductor_chid, &msg, sizeof(msg), NULL);
 
-		sleep(1);
+            if (rcvid == -1 && errno != EINTR) {
+                printf("Conductor: Receive error: %s\n", strerror(errno));
+                break;
+            }
 
-		struct timespec start_time;
-		clock_gettime(CLOCK_MONOTONIC, &start_time);
+            if (msg.type == 2) { // Report
+                total_reported_bpm += msg.reported_bpm;
+                reporting_musicians++;
+            }
 
-		for (int i = 0; i < num_musicians; i++) {
-			if (MsgSend(coids_to_musicians[i], &msg, sizeof(msg), NULL, 0)
-					== -1) {
-				printf("Conductor: Failed to send message to %s: %s\n",
-						musicians[i].name, strerror(errno));
-			}
-		}
+            MsgReply(rcvid, EOK, NULL, 0);
+        }
 
-		struct timespec end_time;
-		clock_gettime(CLOCK_MONOTONIC, &end_time);
+        // Update conductor's BPM based on reports
+        if (reporting_musicians > 0) {
+            conductor_bpm = total_reported_bpm / reporting_musicians;
+            printf("Conductor: Average reported BPM: %.1f\n", conductor_bpm);
+        } else {
+            printf("Conductor: No reports received, keeping current tempo\n");
+        }
+    }
 
-		// Sleep for one beat
-		usleep((60.0 / conductor_bpm) * 1000000);
-
-		// Collect reports from musicians
-		double total_reported_bpm = 0;
-		int reporting_musicians = 0;
-
-		time_t start_report_time = time(NULL);
-		const int timeout_seconds = 5;
-
-		while (reporting_musicians < num_musicians
-				&& time(NULL) - start_report_time < timeout_seconds) {
-
-			pulse_msg_t msg;
-			int rcvid = MsgReceive(conductor_chid, &msg, sizeof(msg), NULL);
-
-			if (rcvid == -1) {
-				if (errno == EINTR) {
-					continue;
-				}
-				printf("Conductor: Receive error: %s\n", strerror(errno));
-				break;
-			}
-
-			if (msg.type == 2) { // Report
-				total_reported_bpm += msg.reported_bpm;
-				reporting_musicians++;
-			}
-
-			MsgReply(rcvid, EOK, NULL, 0);
-		}
-
-		// Update conductor's BPM based on reports
-		if (reporting_musicians > 0) {
-			double new_bpm = total_reported_bpm / reporting_musicians;
-			printf("Conductor: Average reported BPM: %.1f\n", new_bpm);
-			conductor_bpm = new_bpm;
-		} else {
-			printf("Conductor: No reports received, keeping current tempo\n");
-		}
-	}
-
-	printf("\n--- Concert ended after %d pulses ---\n", pulse_count);
-	return NULL;
+    printf("\n--- Concert ended after 16 pulses ---\n");
+    return NULL;
 }
 
 void* musician_thread(void *arg) {
-	musician_t *musician = (musician_t*) arg;
-	int my_id = musician->id;
-	int my_chid = musician->chid;
-	int my_coid_to_conductor = musician->coid_to_conductor;
+    musician_t *musician = (musician_t*)arg;
 
-	while (program_running) {
-		// Wait for message from conductor on dedicated channel
-		pulse_msg_t msg;
+    while (program_running) {
+    	// Wait for message from conductor
+        pulse_msg_t msg;
+        int rcvid = MsgReceive(musician->chid, &msg, sizeof(msg), NULL);
 
-		int rcvid = MsgReceive(my_chid, &msg, sizeof(msg), NULL);
+        if (rcvid == -1 && errno != EINTR) {
+            printf("%s: Receive error: %s\n", musician->name, strerror(errno));
+            continue;
+        }
+        // Process the message
+        if (msg.type == 1) { // Pulse
+            musician->perceived_bpm = add_normal_variance(conductor_bpm); // Add variance to BPM
+            const char *note = musician->notes[musician->note_index]; // Play the next note
+            printf("%s: Playing %s at %.1f BPM\n", musician->name, note, musician->perceived_bpm);
+            musician->note_index = (musician->note_index + 1) % MAX_NOTES; // Loop notes
 
-		if (rcvid == -1) {
-			if (errno == EINTR) {
-				continue;
-			}
-			printf("%s: Receive error: %s\n", musician->name, strerror(errno));
-			continue;
-		}
+            MsgReply(rcvid, EOK, NULL, 0);
 
-		// Process the message
-		if (msg.type == 1) { // 1 = pulse
-			struct timespec pulse_time;
-			clock_gettime(CLOCK_MONOTONIC, &pulse_time);
+            // Report back to conductor
+            pulse_msg_t report = { .type = 2, .musician_id = musician->id, .reported_bpm = musician->perceived_bpm };
+            if (MsgSend(musician->coid_to_conductor, &report, sizeof(report), NULL, 0) == -1) {
+                printf("%s: Failed to send report: %s\n", musician->name, strerror(errno));
+            }
+        } else {
+            MsgReply(rcvid, EOK, NULL, 0);
+        }
+    }
 
-			// Add a small variance to the BPM
-			double perceived_bpm = add_normal_variance(conductor_bpm);
-			musician->perceived_bpm = perceived_bpm;
-
-			// Play the note from the sequence
-			const char *note = musician->notes[musician->note_index];
-			printf("%s: Playing %s at %.1f BPM\n", musician->name, note,
-					perceived_bpm);
-			 // Loop after MAX_NOTES
-			musician->note_index = (musician->note_index + 1) % MAX_NOTES;
-
-			MsgReply(rcvid, EOK, NULL, 0);
-
-			// Report back to conductor
-			pulse_msg_t report;
-			report.type = 2; // Report
-			report.musician_id = my_id;
-			report.reported_bpm = perceived_bpm;
-
-			if (MsgSend(my_coid_to_conductor, &report, sizeof(report), NULL, 0)
-					== -1) {
-				printf("%s: Failed to send report: %s\n", musician->name,
-						strerror(errno));
-			}
-		} else {
-			MsgReply(rcvid, EOK, NULL, 0);
-		}
-	}
-
-	printf("%s: Thread ending\n", musician->name);
-	return NULL;
+    printf("%s: Thread ending\n", musician->name);
+    return NULL;
 }
 
 double add_normal_variance(double bpm) {
 	// Add a small variance (+/- 5%)
-	double variance = ((rand() % 1000) / 10000.0) - 0.05;
-	return bpm * (1.0 + variance);
+    double variance = ((rand() % 1000) / 10000.0) - 0.05;
+    return bpm * (1.0 + variance);
 }
 
 int read_notes_from_file(const char *filename,
-		const char *musician_names[MAX_MUSICIANS],
-		const char *notes[MAX_MUSICIANS][MAX_NOTES]) {
-	FILE *file = fopen(filename, "r");
-	if (!file) {
-		perror("Failed to open file");
-		return -1;
-	}
+        const char *musician_names[MAX_MUSICIANS],
+        const char *notes[MAX_MUSICIANS][MAX_NOTES]) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        perror("Failed to open file");
+        return -1;
+    }
 
-	char line[256];
-	int musician_index = 0;
+    char line[256];
+    int musician_index = 0;
 
-	while (fgets(line, sizeof(line), file)) {
-		if (musician_index >= MAX_MUSICIANS) {
-			break;
-		}
+    while (fgets(line, sizeof(line), file)) {
+        if (musician_index >= MAX_MUSICIANS) {
+            break;
+        }
 
-		// Tokenize the line into notes
-		char *token = strtok(line, " \n");
-		int note_index = 0;
+        // Tokenize the line into notes
+        char *token = strtok(line, " \n");
+        int note_index = 0;
 
-		while (token && note_index < MAX_NOTES) {
-			notes[musician_index][note_index] = strdup(token);
-			token = strtok(NULL, " \n");
-			note_index++;
-		}
+        while (token && note_index < MAX_NOTES) {
+            notes[musician_index][note_index] = strdup(token);
+            token = strtok(NULL, " \n");
+            note_index++;
+        }
 
-		musician_index++;
-	}
+        musician_index++;
+    }
 
-	fclose(file);
-	return musician_index;
+    fclose(file);
+    // Return the number of musicians with notes
+    return musician_index;
 }
