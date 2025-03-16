@@ -1,32 +1,34 @@
 CC = qcc
-CFLAGS = -Vgcc_ntox86_64 -g -Wall -O0
+CFLAGS = -Wall -g
+LDFLAGS = -lm
+TARGET = byzantine_orchestra
+SRC_DIR = src
+OBJ_DIR = obj
+BIN_DIR = bin
 
-SRCDIR = src
-OBJDIR = obj
-BINDIR = bin
+SRCS = $(SRC_DIR)/main.c \
+       $(SRC_DIR)/conductor.c \
+       $(SRC_DIR)/musician.c \
+       $(SRC_DIR)/utils.c
 
-PROJECT = byzantine_orchestra
+OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
-SRC = $(SRCDIR)/$(PROJECT).c
-OBJ = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC))
-TARGET = $(BINDIR)/$(PROJECT)
+INCLUDES = -I$(SRC_DIR)
 
-LIBS = -pthread
+DIRS = $(OBJ_DIR) $(BIN_DIR)
 
-$(shell mkdir -p $(OBJDIR) $(BINDIR))
+.PHONY: all clean
 
-all: $(TARGET)
+all: $(DIRS) $(BIN_DIR)/$(TARGET)
 
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
-	
-$(OBJDIR)/%.o: $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(DIRS):
+	mkdir -p $@
+
+$(BIN_DIR)/$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
-	rm -rf $(OBJDIR)/*.o $(TARGET)
-
-run: $(TARGET)
-	$(TARGET) 3
-
-.PHONY: all clean run debug-paths
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
