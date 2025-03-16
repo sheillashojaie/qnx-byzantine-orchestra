@@ -1,5 +1,5 @@
-E4 D4 C4 B3 A3 G3 F3 E3 D3 C3 B2 A2 G2 F2 E2 D2
-Am Am Am Am G G G G F F F F E E E E
-A2 A2 A2 A2 G2 G2 G2 G2 F2 F2 F2 F2 E2 E2 E2 E2
-C4 B3 A3 G3 F3 E3 D3 C3 B2 A2 G2 F2 E2 D2 C2 B1
-x o x o x o x o x o x o x o x o
+A4 D#5 A4 E5 rest rest rest rest A4 F5 A4 F#5 rest rest rest rest
+Am E Am E Dm F Am F#dim Am E Am E Dm F Am F#dim Am
+A3 A#3 A3 A#3 A3 A#3 A3 A#3 A3 A#3 A3 A#3 A3 A#3 A3 A#3
+G#4 G#4 G#4 G#4 G#4 G#4 G#4 G#4 G#4 G#4 G#4 G#4 G#4 G#4 G#4 G#4
+o x o x o x o x o x o x o x o x
