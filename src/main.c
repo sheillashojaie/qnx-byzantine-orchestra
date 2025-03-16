@@ -53,7 +53,20 @@ int main(int argc, char *argv[]) {
 	sleep(1);
 
 	pthread_t conductor;
-	pthread_create(&conductor, NULL, conductor_thread, NULL);
+	pthread_attr_t attr;
+	struct sched_param param;
+
+	pthread_attr_init(&attr);
+
+	// Set scheduling policy to real-time
+	pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+
+	// Set priority for conductor
+	param.sched_priority = 50;
+
+	pthread_attr_setschedparam(&attr, &param);
+	pthread_create(&conductor, &attr, conductor_thread, NULL);
+	pthread_attr_destroy(&attr);
 	pthread_join(conductor, NULL);
 
 	program_running = false;
@@ -135,6 +148,7 @@ int initialize_musicians(const char *notes[MAX_MUSICIANS][MAX_NOTES]) {
 void cleanup_resources() {
 	for (int i = 0; i < num_musicians; i++) {
 		pthread_cancel(musicians[i].thread);
+		pthread_join(musicians[i].thread, NULL);
 		ConnectDetach(musicians[i].coid_to_conductor);
 		ConnectDetach(coids_to_musicians[i]);
 		ChannelDestroy(musicians[i].chid);
