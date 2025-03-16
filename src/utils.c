@@ -53,3 +53,21 @@ int read_notes_from_file(const char *filename,
 	// Return the number of musicians with notes
 	return musician_index;
 }
+
+double add_byzantine_variance(double bpm) {
+
+	double max_deviation = BYZANTINE_MAX_DEVIATION;
+	double variance;
+
+	if (rand() % 2) {
+		// Too fast
+		variance = BPM_TOLERANCE
+				+ (max_deviation - BPM_TOLERANCE) * (rand() % 1000) / 1000.0;
+	} else {
+		// Too slow
+		variance = -BPM_TOLERANCE
+				- (max_deviation - BPM_TOLERANCE) * (rand() % 1000) / 1000.0;
+	}
+
+	return bpm * (1.0 + variance);
+}

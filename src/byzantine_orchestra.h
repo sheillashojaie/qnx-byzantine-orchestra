@@ -17,6 +17,8 @@
 #define MAX_MUSICIANS 5
 #define DEFAULT_BPM 60
 #define MAX_NOTES 100
+#define BPM_TOLERANCE 0.05
+#define BYZANTINE_MAX_DEVIATION 0.35
 
 typedef struct {
 	int type;        // 1 = pulse, 2 = report
@@ -33,6 +35,7 @@ typedef struct {
 	const char **notes;
 	int note_index;
 	const char *name;
+	bool is_byzantine;
 } musician_t;
 
 extern musician_t musicians[MAX_MUSICIANS];
@@ -42,6 +45,7 @@ extern int conductor_chid;
 extern int coids_to_musicians[MAX_MUSICIANS];
 extern volatile bool program_running;
 extern const char *musician_names[MAX_MUSICIANS];
+extern int byzantine_count;
 
 void* conductor_thread(void *arg);
 void* musician_thread(void *arg);
@@ -49,5 +53,7 @@ double add_normal_variance(double bpm);
 int read_notes_from_file(const char *filename,
 const char *musician_names[MAX_MUSICIANS],
 const char *notes[MAX_MUSICIANS][MAX_NOTES]);
+void assign_byzantine_musicians();
+double add_byzantine_variance(double bpm);
 
 #endif
