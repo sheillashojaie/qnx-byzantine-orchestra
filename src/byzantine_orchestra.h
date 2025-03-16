@@ -12,26 +12,27 @@
 #include <sys/iofunc.h>
 #include <sys/dispatch.h>
 #include <time.h>
+#include <ctype.h>
 
 #define MAX_MUSICIANS 5
 #define DEFAULT_BPM 60
 #define MAX_NOTES 100
 
 typedef struct {
-    int type;        // 1 = pulse, 2 = report
-    int musician_id;
-    double reported_bpm;
+	int type;        // 1 = pulse, 2 = report
+	int musician_id;
+	double reported_bpm;
 } pulse_msg_t;
 
 typedef struct {
-    int id;
-    pthread_t thread;
-    double perceived_bpm;
-    int chid;
-    int coid_to_conductor;
-    const char **notes;
-    int note_index;
-    const char *name;
+	int id;
+	pthread_t thread;
+	double perceived_bpm;
+	int chid;
+	int coid_to_conductor;
+	const char **notes;
+	int note_index;
+	const char *name;
 } musician_t;
 
 extern musician_t musicians[MAX_MUSICIANS];
@@ -46,7 +47,7 @@ void* conductor_thread(void *arg);
 void* musician_thread(void *arg);
 double add_normal_variance(double bpm);
 int read_notes_from_file(const char *filename,
-        const char *musician_names[MAX_MUSICIANS],
-        const char *notes[MAX_MUSICIANS][MAX_NOTES]);
+const char *musician_names[MAX_MUSICIANS],
+const char *notes[MAX_MUSICIANS][MAX_NOTES]);
 
 #endif

@@ -6,29 +6,21 @@ SRC_DIR = src
 OBJ_DIR = obj
 BIN_DIR = bin
 
-SRCS = $(SRC_DIR)/main.c \
-       $(SRC_DIR)/conductor.c \
-       $(SRC_DIR)/musician.c \
-       $(SRC_DIR)/utils.c
-
+SRCS = $(wildcard $(SRC_DIR)/*.c)
 OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
-INCLUDES = -I$(SRC_DIR)
+all: $(BIN_DIR)/$(TARGET)
 
-DIRS = $(OBJ_DIR) $(BIN_DIR)
-
-.PHONY: all clean
-
-all: $(DIRS) $(BIN_DIR)/$(TARGET)
-
-$(DIRS):
-	mkdir -p $@
-
-$(BIN_DIR)/$(TARGET): $(OBJS)
+$(BIN_DIR)/$(TARGET): $(OBJS) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -I$(SRC_DIR) -c $< -o $@
+
+$(OBJ_DIR) $(BIN_DIR):
+	mkdir -p $@
 
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
+
+.PHONY: all clean

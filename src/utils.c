@@ -1,5 +1,4 @@
 #include "byzantine_orchestra.h"
-#include <ctype.h>
 
 double add_normal_variance(double bpm) {
 	// Add a small variance (+/- 5%)
@@ -20,14 +19,9 @@ int read_notes_from_file(const char *filename,
 	int musician_index = 0;
 
 	while (fgets(line, sizeof(line), file)) {
-		if (musician_index >= MAX_MUSICIANS) {
-			break;
-		}
 
 		int i = strlen(line) - 1;
-		while (i >= 0
-				&& (line[i] == ' ' || line[i] == '\n' || line[i] == '\r'
-						|| line[i] == '\t')) {
+		while (i >= 0 && (line[i] == ' ' || line[i] == '\n' || line[i] == '\r')) {
 			line[i] = '\0';
 			i--;
 		}
@@ -40,18 +34,14 @@ int read_notes_from_file(const char *filename,
 				p++;
 			if (!*p)
 				break;  // End of line
-
 			// Start of token
 			char *start = p;
-
 			// End of token
 			while (*p && !isspace(*p))
 				p++;
-
 			// Null-terminate
 			if (*p)
 				*p++ = '\0';
-
 			notes[musician_index][note_index] = strdup(start);
 			note_index++;
 		}
