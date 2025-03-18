@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <pthread.h>
+#include <sched.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/neutrino.h>
@@ -18,7 +19,7 @@
 #define DEFAULT_BPM 60
 #define MAX_NOTES 100
 #define BPM_TOLERANCE 0.05
-#define BYZANTINE_MAX_DEVIATION 0.35
+#define BYZANTINE_MAX_DEVIATION 0.10
 
 typedef struct {
 	int type;        // 1 = pulse, 2 = report
@@ -49,11 +50,16 @@ extern int byzantine_count;
 
 void* conductor_thread(void *arg);
 void* musician_thread(void *arg);
+int parse_arguments(int argc, char *argv[]);
+const char* select_piece();
+int initialize_musicians(const char *notes[MAX_MUSICIANS][MAX_NOTES]);
+void assign_byzantine_musicians();
 double add_normal_variance(double bpm);
+double add_byzantine_variance(double bpm);
 int read_notes_from_file(const char *filename,
 const char *musician_names[MAX_MUSICIANS],
 const char *notes[MAX_MUSICIANS][MAX_NOTES]);
-void assign_byzantine_musicians();
-double add_byzantine_variance(double bpm);
+void free_notes_memory(const char *notes[MAX_MUSICIANS][MAX_NOTES]);
+void cleanup_resources();
 
 #endif
