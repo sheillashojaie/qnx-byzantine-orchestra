@@ -62,6 +62,7 @@ int main(int argc, char *argv[]) {
 
 	program_running = false;
 
+	free_notes_memory(notes);
 	cleanup_resources();
 	return 0;
 }

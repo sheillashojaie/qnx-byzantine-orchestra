@@ -88,6 +88,38 @@ void assign_byzantine_musicians() {
 	}
 }
 
+void update_musician_bpm(musician_t *musician, bool byzantine_timing) {
+    if (byzantine_timing) {
+        musician->perceived_bpm = add_byzantine_variance(conductor_bpm);
+    } else {
+        musician->perceived_bpm = add_normal_variance(conductor_bpm);
+    }
+}
+
+double get_reported_bpm(musician_t *musician, bool report_honestly) {
+    if (report_honestly) {
+        return musician->perceived_bpm;
+    } else {
+        return add_normal_variance(conductor_bpm);
+    }
+}
+
+void play_note(musician_t *musician, double reported_bpm) {
+    const char *status = musician->is_byzantine ? "[BYZANTINE]" : "";
+
+    if (musician->is_byzantine) {
+        printf("%s %s: Playing %s at %.1f BPM (reporting: %.1f BPM)\n",
+               musician->name, status,
+               musician->notes[musician->note_index],
+               musician->perceived_bpm, reported_bpm);
+    } else {
+        printf("%s: Playing %s at %.1f BPM\n",
+               musician->name,
+               musician->notes[musician->note_index],
+               musician->perceived_bpm);
+    }
+}
+
 double add_normal_variance(double bpm) {
 	// Add a small variance (+/- 5%)
 	double variance = ((rand() % 1000) / 10000.0) - BPM_TOLERANCE;

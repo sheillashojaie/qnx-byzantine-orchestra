@@ -3,7 +3,7 @@
 void* conductor_thread(void *unused_arg) {
     (void) unused_arg;
 
-    for (int pulse_count = 0; pulse_count < 16 && program_running; pulse_count++) {
+    for (int pulse_count = 0; pulse_count < MAX_PULSES && program_running; pulse_count++) {
         printf("\n--- Pulse %d ---\n", pulse_count + 1);
 
         pulse_msg_t msg = { .type = 1 }; // Pulse
@@ -14,14 +14,14 @@ void* conductor_thread(void *unused_arg) {
             }
         }
         // Sleep for one beat
-        usleep((60.0 / conductor_bpm) * 1000000);
+        usleep((MICROSECONDS_PER_MINUTE / conductor_bpm));
 
         // Collect reports from musicians
         double total_reported_bpm = 0;
         int reporting_musicians = 0;
         time_t start_report_time = time(NULL);
 
-        while (reporting_musicians < num_musicians && time(NULL) - start_report_time < 5) {
+        while (reporting_musicians < num_musicians && time(NULL) - start_report_time < REPORT_TIMEOUT_SECONDS) {
             pulse_msg_t msg;
             int rcvid = MsgReceive(conductor_chid, &msg, sizeof(msg), NULL);
 
@@ -47,6 +47,6 @@ void* conductor_thread(void *unused_arg) {
         }
     }
 
-    printf("\n--- Concert ended after 16 pulses ---\n");
+    printf("\n--- Concert ended after %d pulses ---\n", MAX_PULSES);
     return NULL;
 }

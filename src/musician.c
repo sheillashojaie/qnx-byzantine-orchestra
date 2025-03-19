@@ -1,6 +1,6 @@
 #include "byzantine_orchestra.h"
 
-void* musician_thread(void *arg) {
+void* musician_thread(void* arg) {
     musician_t *musician = (musician_t*) arg;
     double reported_bpm;
 
@@ -16,48 +16,36 @@ void* musician_thread(void *arg) {
 
         // Process the message
         if (msg.type == 1) { // Pulse
-            if (musician->is_byzantine) {
-                if (rand() % 2) { // 50% chance of Byzantine timing
-                    musician->perceived_bpm = add_byzantine_variance(conductor_bpm);
-                    // Report deceptively
-                    reported_bpm = add_normal_variance(conductor_bpm);
-                    printf("%s [BYZANTINE]: Playing %s at %.1f BPM (reporting: %.1f BPM)\n",
-                           musician->name, musician->notes[musician->note_index],
-                           musician->perceived_bpm, reported_bpm);
-                } else {
-                	// Play normally and report truthfully
-                    musician->perceived_bpm = add_normal_variance(conductor_bpm);
-                    reported_bpm = musician->perceived_bpm;
-                    printf("%s [BYZANTINE]: Playing %s at %.1f BPM (reporting: %.1f BPM)\n",
-                           musician->name, musician->notes[musician->note_index],
-                           musician->perceived_bpm, reported_bpm);
-                }
-            } else {
-                musician->perceived_bpm = add_normal_variance(conductor_bpm);
-                reported_bpm = musician->perceived_bpm;
+            bool byzantine_timing = false;
+            bool report_honestly = true;
 
-                printf("%s: Playing %s at %.1f BPM\n", musician->name,
-                       musician->notes[musician->note_index],
-                       musician->perceived_bpm);
+            if (musician->is_byzantine && rand() % 100 < (BYZANTINE_BEHAVIOR_CHANCE * 100)) {
+                byzantine_timing = true;
+                report_honestly = false;
             }
+
+            update_musician_bpm(musician, byzantine_timing);
+            reported_bpm = get_reported_bpm(musician, report_honestly);
+            play_note(musician, reported_bpm);
 
             // Loop notes
             musician->note_index = (musician->note_index + 1) % MAX_NOTES;
             MsgReply(rcvid, EOK, NULL, 0);
-            // Report back to conductor
-            pulse_msg_t report = { .type = 2, .musician_id = musician->id,
-                                 .reported_bpm = reported_bpm };
 
-            if (MsgSend(musician->coid_to_conductor, &report, sizeof(report),
-                        NULL, 0) == -1) {
-                printf("%s: Failed to send report: %s\n", musician->name,
-                       strerror(errno));
+            // Report back to conductor
+            pulse_msg_t report = {
+                .type = 2,
+                .musician_id = musician->id,
+                .reported_bpm = reported_bpm
+            };
+
+            if (MsgSend(musician->coid_to_conductor, &report, sizeof(report), NULL, 0) == -1) {
+                printf("%s: Could not send report: %s\n", musician->name, strerror(errno));
             }
         } else {
             MsgReply(rcvid, EOK, NULL, 0);
         }
     }
 
-    printf("%s: Thread ending\n", musician->name);
     return NULL;
 }

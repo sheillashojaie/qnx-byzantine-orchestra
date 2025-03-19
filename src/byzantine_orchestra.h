@@ -20,6 +20,10 @@
 #define MAX_NOTES 100
 #define BPM_TOLERANCE 0.05
 #define BYZANTINE_MAX_DEVIATION 0.10
+#define MAX_PULSES 16
+#define REPORT_TIMEOUT_SECONDS 5
+#define MICROSECONDS_PER_MINUTE 60000000.0
+#define BYZANTINE_BEHAVIOR_CHANCE 0.5
 
 typedef struct {
 	int type;        // 1 = pulse, 2 = report
@@ -54,6 +58,9 @@ int parse_arguments(int argc, char *argv[]);
 const char* select_piece();
 int initialize_musicians(const char *notes[MAX_MUSICIANS][MAX_NOTES]);
 void assign_byzantine_musicians();
+void update_musician_bpm(musician_t *musician, bool byzantine_timing);
+double get_reported_bpm(musician_t *musician, bool report_honestly);
+void play_note(musician_t *musician, double reported_bpm);
 double add_normal_variance(double bpm);
 double add_byzantine_variance(double bpm);
 int read_notes_from_file(const char *filename,
