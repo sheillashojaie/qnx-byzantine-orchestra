@@ -18,12 +18,20 @@
 #define MAX_MUSICIANS 5
 #define DEFAULT_BPM 60
 #define MAX_NOTES 100
+#define PRIORITY_CONDUCTOR 50
 #define BPM_TOLERANCE 0.05
 #define BYZANTINE_MAX_DEVIATION 0.10
+#define FIRST_CHAIR_MAX_DEVIATION 0.02
 #define MAX_PULSES 16
 #define REPORT_TIMEOUT_SECONDS 5
 #define MICROSECONDS_PER_MINUTE 60000000.0
 #define BYZANTINE_BEHAVIOR_CHANCE 0.5
+
+typedef enum {
+    DEVIATION_NORMAL,
+    DEVIATION_BYZANTINE,
+    DEVIATION_FIRST_CHAIR
+} deviation_type_t;
 
 typedef struct {
 	int type;        // 1 = pulse, 2 = report
@@ -41,6 +49,7 @@ typedef struct {
 	int note_index;
 	const char *name;
 	bool is_byzantine;
+	bool is_first_chair;
 } musician_t;
 
 extern musician_t musicians[MAX_MUSICIANS];
@@ -61,8 +70,7 @@ void assign_byzantine_musicians();
 void update_musician_bpm(musician_t *musician, bool byzantine_timing);
 double get_reported_bpm(musician_t *musician, bool report_honestly);
 void play_note(musician_t *musician, double reported_bpm);
-double add_normal_variance(double bpm);
-double add_byzantine_variance(double bpm);
+double add_variance(double bpm, deviation_type_t deviation_type);
 int read_notes_from_file(const char *filename,
 const char *musician_names[MAX_MUSICIANS],
 const char *notes[MAX_MUSICIANS][MAX_NOTES]);

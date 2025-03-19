@@ -43,6 +43,7 @@ int initialize_musicians(const char *notes[MAX_MUSICIANS][MAX_NOTES]) {
 		musicians[i].notes = notes[i];
 		musicians[i].note_index = 0;
 		musicians[i].name = musician_names[i];
+		musicians[i].is_first_chair = (i == 0);
 
 		musicians[i].chid = ChannelCreate(0);
 		if (musicians[i].chid == -1) {
@@ -89,64 +90,96 @@ void assign_byzantine_musicians() {
 }
 
 void update_musician_bpm(musician_t *musician, bool byzantine_timing) {
-    if (byzantine_timing) {
-        musician->perceived_bpm = add_byzantine_variance(conductor_bpm);
-    } else {
-        musician->perceived_bpm = add_normal_variance(conductor_bpm);
-    }
+	deviation_type_t deviation_type;
+
+	if (musician->is_byzantine && byzantine_timing) {
+		deviation_type = DEVIATION_BYZANTINE;
+	} else if (musician->is_first_chair) {
+		deviation_type = DEVIATION_FIRST_CHAIR;
+	} else {
+		deviation_type = DEVIATION_NORMAL;
+	}
+
+	musician->perceived_bpm = add_variance(conductor_bpm, deviation_type);
 }
 
 double get_reported_bpm(musician_t *musician, bool report_honestly) {
-    if (report_honestly) {
-        return musician->perceived_bpm;
-    } else {
-        return add_normal_variance(conductor_bpm);
-    }
+	if (musician->is_first_chair) {
+		if (musician->is_byzantine) {
+			// First chair, if Byzantine, uses first chair deviation for reporting
+			return add_variance(conductor_bpm, DEVIATION_FIRST_CHAIR);
+		} else {
+			// First chair, if not Byzantine, reports its actual perceived BPM
+			return musician->perceived_bpm;
+		}
+	} else if (report_honestly) {
+		return musician->perceived_bpm;
+	} else {
+		return add_variance(conductor_bpm, DEVIATION_NORMAL);
+	}
 }
 
 void play_note(musician_t *musician, double reported_bpm) {
-    const char *status = musician->is_byzantine ? "[BYZANTINE]" : "";
+	const char *status = musician->is_byzantine ? "[BYZANTINE]" : "";
 
-    if (musician->is_byzantine) {
-        printf("%s %s: Playing %s at %.1f BPM (reporting: %.1f BPM)\n",
-               musician->name, status,
-               musician->notes[musician->note_index],
-               musician->perceived_bpm, reported_bpm);
-    } else {
-        printf("%s: Playing %s at %.1f BPM\n",
-               musician->name,
-               musician->notes[musician->note_index],
-               musician->perceived_bpm);
-    }
-}
+	if (musician->is_first_chair && musician->is_byzantine) {
+		status = "[FIRST CHAIR, BYZANTINE]";
+	} else if (musician->is_first_chair) {
+		status = "[FIRST CHAIR]";
+	} else if (musician->is_byzantine) {
+		status = "[BYZANTINE]";
+	}
 
-double add_normal_variance(double bpm) {
-	// Add a small variance (+/- 5%)
-	double variance = ((rand() % 1000) / 10000.0) - BPM_TOLERANCE;
-	return bpm * (1.0 + variance);
-}
-
-double add_byzantine_variance(double bpm) {
-	// Add deviation at least BPM_TOLERANCE and at most BYZANTINE_MAX_DEVIATION
-	double max_deviation = BYZANTINE_MAX_DEVIATION;
-	double variance;
-
-	if (rand() % 2) {
-		// Too fast
-		variance = BPM_TOLERANCE
-				+ (max_deviation - BPM_TOLERANCE) * (rand() % 1000) / 1000.0;
+	if (musician->is_byzantine || musician->is_first_chair) {
+		printf("%s %s: Playing %s at %.1f BPM (reporting: %.1f BPM)\n",
+				musician->name, status, musician->notes[musician->note_index],
+				musician->perceived_bpm, reported_bpm);
 	} else {
-		// Too slow
-		variance = -BPM_TOLERANCE
-				- (max_deviation - BPM_TOLERANCE) * (rand() % 1000) / 1000.0;
+		printf("%s: Playing %s at %.1f BPM\n", musician->name,
+				musician->notes[musician->note_index], musician->perceived_bpm);
+	}
+}
+
+double add_variance(double bpm, deviation_type_t deviation_type) {
+	double variance = 0.0;
+
+	switch (deviation_type) {
+	case DEVIATION_NORMAL:
+		// Normal variance: +/- BPM_TOLERANCE
+		variance = ((rand() % 1000) / 10000.0) - BPM_TOLERANCE;
+		break;
+
+	case DEVIATION_BYZANTINE:
+		// Byzantine variance: at least BPM_TOLERANCE, at most BYZANTINE_MAX_DEVIATION
+		if (rand() % 2) {
+			// Too fast
+			variance = BPM_TOLERANCE
+					+ (BYZANTINE_MAX_DEVIATION - BPM_TOLERANCE)
+							* (rand() % 1000) / 1000.0;
+		} else {
+			// Too slow
+			variance = -BPM_TOLERANCE
+					- (BYZANTINE_MAX_DEVIATION - BPM_TOLERANCE)
+							* (rand() % 1000) / 1000.0;
+		}
+		break;
+
+	case DEVIATION_FIRST_CHAIR:
+		// First chair variance: +/- FIRST_CHAIR_MAX_DEVIATION
+		variance = ((rand() % 400) / 10000.0) - FIRST_CHAIR_MAX_DEVIATION;
+		break;
+
+	default:
+		variance = 0.0;
+		break;
 	}
 
 	return bpm * (1.0 + variance);
 }
 
 int read_notes_from_file(const char *filename,
-	const char *musician_names[MAX_MUSICIANS],
-	const char *notes[MAX_MUSICIANS][MAX_NOTES]) {
+		const char *musician_names[MAX_MUSICIANS],
+		const char *notes[MAX_MUSICIANS][MAX_NOTES]) {
 
 	FILE *file = fopen(filename, "r");
 
