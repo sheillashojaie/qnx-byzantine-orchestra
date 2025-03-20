@@ -10,8 +10,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/neutrino.h>
-#include <sys/iofunc.h>
-#include <sys/dispatch.h>
 #include <time.h>
 #include <ctype.h>
 

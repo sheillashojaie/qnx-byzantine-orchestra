@@ -15,18 +15,18 @@ int main(int argc, char *argv[]) {
 	srand(time(NULL)); // Seed random number
 
 	if (parse_arguments(argc, argv) != 0) {
-		return 1;
+		return -1;
 	}
 
 	const char *filename = select_piece();
 	if (!filename) {
-		return 1;
+		return -1;
 	}
 
 	const char *notes[MAX_MUSICIANS][MAX_NOTES];
 	if (read_notes_from_file(filename, musician_names, notes) == -1) {
 		printf("Could not read notes from file\n");
-		return 1;
+		return -1;
 	}
 
 	assign_byzantine_musicians();
@@ -37,12 +37,13 @@ int main(int argc, char *argv[]) {
 	conductor_chid = ChannelCreate(0);
 	if (conductor_chid == -1) {
 		perror("Could not create conductor channel");
-		return 1;
+		return -1;
 	}
 
 	if (initialize_musicians(notes) != 0) {
+		free_notes_memory(notes);
 		cleanup_resources();
-		return 1;
+		return -1;
 	}
 
 	pthread_t conductor;
@@ -53,7 +54,7 @@ int main(int argc, char *argv[]) {
 
 	// Set scheduling policy to real-time and set conductor priority
 	pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
-	param.sched_priority = 50;
+	param.sched_priority = PRIORITY_CONDUCTOR;
 
 	pthread_attr_setschedparam(&attr, &param);
 	pthread_create(&conductor, &attr, conductor_thread, NULL);

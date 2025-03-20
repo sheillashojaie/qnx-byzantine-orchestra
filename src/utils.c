@@ -3,19 +3,19 @@
 int parse_arguments(int argc, char *argv[]) {
 	if (argc < 3) {
 		printf("Usage: %s <num_musicians> <bpm>\n", argv[0]);
-		return 1;
+		return -1;
 	}
 
 	num_musicians = atoi(argv[1]);
 	if (num_musicians < 3 || num_musicians > MAX_MUSICIANS) {
 		printf("Number of musicians must be between 3 and %d\n", MAX_MUSICIANS);
-		return 1;
+		return -1;
 	}
 
 	conductor_bpm = atof(argv[2]);
 	if (conductor_bpm <= 0) {
 		printf("BPM must be a positive number\n");
-		return 1;
+		return -1;
 	}
 
 	return 0;
@@ -184,7 +184,7 @@ int read_notes_from_file(const char *filename,
 	FILE *file = fopen(filename, "r");
 
 	if (!file) {
-		perror("Failed to open file");
+		perror("Could not open file");
 		return -1;
 	}
 
