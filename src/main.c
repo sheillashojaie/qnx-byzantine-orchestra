@@ -1,4 +1,4 @@
-#include "byzantine_orchestra.h"
+#include <byzantine_orchestra.h>
 
 musician_t musicians[MAX_MUSICIANS];
 int num_musicians = 0;

@@ -1,4 +1,4 @@
-#include "byzantine_orchestra.h"
+#include <byzantine_orchestra.h>
 
 void* conductor_thread(void *unused_arg) {
     (void) unused_arg;
