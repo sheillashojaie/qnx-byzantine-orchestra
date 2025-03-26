@@ -1,30 +1,30 @@
 #include <byzantine_orchestra.h>
 
 int initialize_orchestra(const char *filename) {
-    const char *notes[MAX_MUSICIANS][MAX_NOTES];
+	const char *notes[MAX_MUSICIANS][MAX_NOTES];
 
-    if (read_notes_from_file(filename, musician_names, notes) == -1) {
-        printf("Could not read notes from file\n");
-        return -1;
-    }
+	if (read_notes_from_file(filename, musician_names, notes) == -1) {
+		printf("Could not read notes from file\n");
+		return -1;
+	}
 
-    assign_byzantine_musicians();
+	assign_byzantine_musicians();
 
-    printf("Byzantine Orchestra starting with %d musicians at %.1f BPM\n\n",
-           num_musicians, conductor_bpm);
+	printf("Byzantine Orchestra starting with %d musicians at %.1f BPM\n\n",
+			num_musicians, conductor_bpm);
 
-    conductor_chid = ChannelCreate(0);
-    if (conductor_chid == -1) {
-        perror("Could not create conductor channel");
-        return -1;
-    }
+	conductor_chid = ChannelCreate(0);
+	if (conductor_chid == -1) {
+		perror("Could not create conductor channel");
+		return -1;
+	}
 
-    if (initialize_musicians(notes) != 0) {
-        free_notes_memory(notes);
-        return -1;
-    }
+	if (initialize_musicians(notes) != 0) {
+		free_notes_memory(notes);
+		return -1;
+	}
 
-    return 0;
+	return 0;
 }
 
 int initialize_musicians(const char *notes[MAX_MUSICIANS][MAX_NOTES]) {
@@ -62,8 +62,12 @@ int initialize_musicians(const char *notes[MAX_MUSICIANS][MAX_NOTES]) {
 }
 
 void assign_byzantine_musicians() {
-	// 1 to fewer than half of musicians
-	byzantine_count = 1 + (rand() % (num_musicians / 2));
+
+	// Maximum n number of Byzantine musicians for 3n+1 musicians
+    int max_byzantine = (num_musicians == 7) ? 2 : 1;
+
+    // At least 1 Byzantine, but no more than max_byzantine
+    byzantine_count = 1 + (rand() % max_byzantine);
 
 	for (int i = 0; i < num_musicians; i++) {
 		musicians[i].is_byzantine = false;

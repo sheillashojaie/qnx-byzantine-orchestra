@@ -8,8 +8,10 @@ int coids_to_musicians[MAX_MUSICIANS];
 volatile bool program_running = true;
 int byzantine_count = 0;
 
-const char *musician_names[MAX_MUSICIANS] = { "Melody", "Harmony", "Bass",
-		"Counter-Melody", "Rhythm" };
+const char *musician_names[MAX_MUSICIANS] = {
+    "Melody", "Harmony", "Bass", "Counter-Melody",
+    "Percussion", "Fill", "Rhythm"
+};
 
 int main(int argc, char *argv[]) {
 	srand(time(NULL)); // Seed random number
@@ -23,28 +25,10 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	const char *notes[MAX_MUSICIANS][MAX_NOTES];
-	if (read_notes_from_file(filename, musician_names, notes) == -1) {
-		printf("Could not read notes from file\n");
-		return -1;
-	}
-
-	assign_byzantine_musicians();
-
-	printf("Byzantine Orchestra starting with %d musicians at %.1f BPM\n\n",
-			num_musicians, conductor_bpm);
-
-	conductor_chid = ChannelCreate(0);
-	if (conductor_chid == -1) {
-		perror("Could not create conductor channel");
-		return -1;
-	}
-
-	if (initialize_musicians(notes) != 0) {
-		free_notes_memory(notes);
-		cleanup_resources();
-		return -1;
-	}
+    if (initialize_orchestra(filename) != 0) {
+        printf("Could not initialize orchestra\n");
+        return -1;
+    }
 
 	pthread_t conductor;
 	pthread_attr_t attr;
@@ -63,7 +47,6 @@ int main(int argc, char *argv[]) {
 
 	program_running = false;
 
-	free_notes_memory(notes);
 	cleanup_resources();
 	return 0;
 }

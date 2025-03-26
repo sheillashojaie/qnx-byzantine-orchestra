@@ -6,11 +6,12 @@ int parse_arguments(int argc, char *argv[]) {
 		return -1;
 	}
 
-	num_musicians = atoi(argv[1]);
-	if (num_musicians < 3 || num_musicians > MAX_MUSICIANS) {
-		printf("Number of musicians must be between 3 and %d\n", MAX_MUSICIANS);
-		return -1;
-	}
+    num_musicians = atoi(argv[1]);
+    if (num_musicians < MIN_MUSICIANS || num_musicians > MAX_MUSICIANS) {
+        printf("Number of musicians must be between %d and %d\n",
+               MIN_MUSICIANS, MAX_MUSICIANS);
+        return -1;
+    }
 
 	conductor_bpm = atof(argv[2]);
 	if (conductor_bpm <= 0) {
@@ -23,13 +24,13 @@ int parse_arguments(int argc, char *argv[]) {
 
 const char* select_piece() {
 	printf("Select a piece:\n");
-	printf("1. Night on Bald Mountain\n");
+	printf("1. O Fortuna\n");
 	int piece_selection;
 	scanf("%d", &piece_selection);
 
 	switch (piece_selection) {
 	case 1:
-		return "../src/night_on_bald_mountain.txt";
+		return "../src/o_fortuna.txt";
 	default:
 		printf("Invalid choice\n");
 		return NULL;
@@ -45,12 +46,6 @@ int read_notes_from_file(const char *filename,
 	if (!file) {
 		perror("Could not open file");
 		return -1;
-	}
-
-	for (int i = 0; i < MAX_MUSICIANS; i++) {
-		for (int j = 0; j < MAX_NOTES; j++) {
-			notes[i][j] = NULL;
-		}
 	}
 
 	char line[256];
