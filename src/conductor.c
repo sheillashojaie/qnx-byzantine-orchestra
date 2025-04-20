@@ -6,6 +6,7 @@ void* conductor_thread(void *unused_arg) {
     for (int pulse_count = 0; pulse_count < MAX_PULSES && program_running; pulse_count++) {
         printf("\n--- Pulse %d ---\n", pulse_count + 1);
 
+        // Send pulse to all musicians
         pulse_msg_t msg = { .type = 1 }; // Pulse
         for (int i = 0; i < num_musicians; i++) {
             if (MsgSend(coids_to_musicians[i], &msg, sizeof(msg), NULL, 0) == -1) {
@@ -13,15 +14,15 @@ void* conductor_thread(void *unused_arg) {
                        musicians[i].name, strerror(errno));
             }
         }
-        // Sleep for one beat
-        usleep((MICROSECONDS_PER_MINUTE / conductor_bpm));
 
         // Collect reports from musicians
         double total_reported_bpm = 0;
         int reporting_musicians = 0;
         time_t start_report_time = time(NULL);
 
-        while (reporting_musicians < num_musicians && time(NULL) - start_report_time < REPORT_TIMEOUT_SECONDS) {
+        // Wait until all musician reports received or timeout
+        while (reporting_musicians < num_musicians &&
+               time(NULL) - start_report_time < REPORT_TIMEOUT_SECONDS) {
             pulse_msg_t msg;
             int rcvid = MsgReceive(conductor_chid, &msg, sizeof(msg), NULL);
 

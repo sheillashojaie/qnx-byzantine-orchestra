@@ -3,6 +3,9 @@
 void* musician_thread(void* arg) {
     musician_t *musician = (musician_t*) arg;
     double reported_bpm;
+    struct timespec start_time, end_time;
+    double elapsed_time;
+    double wait_time;
 
     while (program_running) {
         // Wait for message from conductor
@@ -13,6 +16,9 @@ void* musician_thread(void* arg) {
             printf("%s: Receive error: %s\n", musician->name, strerror(errno));
             continue;
         }
+
+        // Record start time for next note
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
 
         // Process the message
         if (msg.type == 1) { // Pulse
@@ -26,11 +32,27 @@ void* musician_thread(void* arg) {
 
             update_musician_bpm(musician, byzantine_timing);
             reported_bpm = get_reported_bpm(musician, report_honestly);
+
+            MsgReply(rcvid, EOK, NULL, 0);
+
+            // Calculate how long to wait based on perceived BPM
+            double target_time = MICROSECONDS_PER_MINUTE / musician->perceived_bpm;
+
+            // Calculate elapsed time since receiving the message
+            clock_gettime(CLOCK_MONOTONIC, &end_time);
+            elapsed_time = (end_time.tv_sec - start_time.tv_sec) * 1000000.0 +
+                             (end_time.tv_nsec - start_time.tv_nsec) / 1000.0;
+
+            // Wait for the remaining time
+            if (elapsed_time < target_time) {
+                wait_time = target_time - elapsed_time;
+                usleep((useconds_t)wait_time);
+            }
+
             play_note(musician, reported_bpm);
 
             // Loop notes
             musician->note_index = (musician->note_index + 1) % MAX_NOTES;
-            MsgReply(rcvid, EOK, NULL, 0);
 
             // Report back to conductor
             pulse_msg_t report = {
