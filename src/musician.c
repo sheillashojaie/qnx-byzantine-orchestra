@@ -124,38 +124,39 @@ void play_note(musician_t *musician, double reported_bpm) {
 }
 
 double add_variance(double bpm, deviation_type_t deviation_type) {
-	double variance = 0.0;
+	double min_deviation, max_deviation;
 
 	switch (deviation_type) {
 	case DEVIATION_NORMAL:
-		// Normal variance: +/- BPM_TOLERANCE
-		variance = ((rand() % 1000) / 10000.0) - BPM_TOLERANCE;
+		min_deviation = -BPM_TOLERANCE;
+		max_deviation =  BPM_TOLERANCE;
 		break;
 
 	case DEVIATION_BYZANTINE:
-		// Byzantine variance: at least BPM_TOLERANCE, at most BYZANTINE_MAX_DEVIATION
-		if (rand() % 2) {
+		if (rand() % 2 == 0) {
 			// Too fast
-			variance = BPM_TOLERANCE
-					+ (BYZANTINE_MAX_DEVIATION - BPM_TOLERANCE)
-							* (rand() % 1000) / 1000.0;
+			min_deviation =  BPM_TOLERANCE;
+			max_deviation =  BYZANTINE_MAX_DEVIATION;
 		} else {
 			// Too slow
-			variance = -BPM_TOLERANCE
-					- (BYZANTINE_MAX_DEVIATION - BPM_TOLERANCE)
-							* (rand() % 1000) / 1000.0;
+			min_deviation = -BYZANTINE_MAX_DEVIATION;
+			max_deviation = -BPM_TOLERANCE;
 		}
 		break;
 
 	case DEVIATION_FIRST_CHAIR:
-		// First chair variance: +/- FIRST_CHAIR_MAX_DEVIATION
-		variance = ((rand() % 400) / 10000.0) - FIRST_CHAIR_MAX_DEVIATION;
+		min_deviation = -FIRST_CHAIR_MAX_DEVIATION;
+		max_deviation =  FIRST_CHAIR_MAX_DEVIATION;
 		break;
 
 	default:
-		variance = 0.0;
+		min_deviation = 0.0;
+		max_deviation = 0.0;
 		break;
 	}
 
-	return bpm * (1.0 + variance);
+	// Uniform random value between min_deviation and max_deviation
+	double random_factor = ((rand() / (double)RAND_MAX) * (max_deviation - min_deviation)) + min_deviation;
+	return bpm * (1.0 + random_factor);
 }
+
