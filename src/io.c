@@ -19,6 +19,8 @@ int parse_arguments(int argc, char *argv[]) {
 		return -1;
 	}
 
+	target_bpm = conductor_bpm;
+
 	return 0;
 }
 

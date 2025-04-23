@@ -6,5 +6,6 @@
 #include <musician.h>
 #include <io.h>
 #include <orchestra.h>
+#include <visualization.h>
 
 #endif

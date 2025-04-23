@@ -49,7 +49,7 @@ void* musician_thread(void* arg) {
                 usleep((useconds_t)wait_time);
             }
 
-            play_note(musician, reported_bpm);
+            play_note_with_viz(musician, reported_bpm);
 
             // Loop notes
             musician->note_index = (musician->note_index + 1) % MAX_NOTES;
@@ -103,25 +103,27 @@ double get_reported_bpm(musician_t *musician, bool report_honestly) {
 }
 
 void play_note(musician_t *musician, double reported_bpm) {
-	const char *status = musician->is_byzantine ? "[BYZANTINE]" : "";
+    const char *status = musician->is_byzantine ? "[BYZANTINE]" : "";
 
-	if (musician->is_first_chair && musician->is_byzantine) {
-		status = "[FIRST CHAIR, BYZANTINE]";
-	} else if (musician->is_first_chair) {
-		status = "[FIRST CHAIR]";
-	} else if (musician->is_byzantine) {
-		status = "[BYZANTINE]";
-	}
+    if (musician->is_first_chair && musician->is_byzantine) {
+        status = "[FIRST CHAIR, BYZANTINE]";
+    } else if (musician->is_first_chair) {
+        status = "[FIRST CHAIR]";
+    } else if (musician->is_byzantine) {
+        status = "[BYZANTINE]";
+    }
 
-	if (musician->is_byzantine || musician->is_first_chair) {
-		printf("%s %s: Playing %s at %.1f BPM (reporting: %.1f BPM)\n",
-				musician->name, status, musician->notes[musician->note_index],
-				musician->perceived_bpm, reported_bpm);
-	} else {
-		printf("%s: Playing %s at %.1f BPM\n", musician->name,
-				musician->notes[musician->note_index], musician->perceived_bpm);
-	}
+    if (musician->is_byzantine || musician->is_first_chair) {
+        printf("%s %s: Playing %s at %.1f BPM (reporting: %.1f BPM)\n",
+                musician->name, status, musician->notes[musician->note_index],
+                musician->perceived_bpm, reported_bpm);
+    } else {
+        printf("%s: Playing %s at %.1f BPM\n", musician->name,
+                musician->notes[musician->note_index], musician->perceived_bpm);
+    }
+    add_note_event(musician->notes[musician->note_index], musician->perceived_bpm, musician->id);
 }
+
 
 double add_variance(double bpm, deviation_type_t deviation_type) {
 	double min_deviation, max_deviation;
