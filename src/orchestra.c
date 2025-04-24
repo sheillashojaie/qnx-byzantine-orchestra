@@ -85,11 +85,13 @@ void assign_byzantine_musicians() {
 }
 
 void cleanup_resources() {
-	for (int i = 0; i < num_musicians; i++) {
-		pthread_cancel(musicians[i].thread);
-		ConnectDetach(musicians[i].coid_to_conductor);
-		ConnectDetach(coids_to_musicians[i]);
-		ChannelDestroy(musicians[i].chid);
-	}
-	ChannelDestroy(conductor_chid);
+    for (int i = 0; i < num_musicians; i++) {
+        pthread_cancel(musicians[i].thread);
+        ConnectDetach(musicians[i].coid_to_conductor);
+        ConnectDetach(coids_to_musicians[i]);
+        ChannelDestroy(musicians[i].chid);
+    }
+    ChannelDestroy(conductor_chid);
+
+    viz_running = false;
 }

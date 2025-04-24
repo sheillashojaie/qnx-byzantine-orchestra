@@ -62,6 +62,7 @@ extern double target_bpm;
 extern int conductor_chid;
 extern int coids_to_musicians[MAX_MUSICIANS];
 extern volatile bool program_running;
+extern volatile bool viz_running;
 extern const char *musician_names[MAX_MUSICIANS];
 extern int byzantine_count;
 

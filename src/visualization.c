@@ -15,7 +15,7 @@ typedef struct {
 } visualization_t;
 
 // ANSI escape codes for distinct musician colours
-const char *COLOURS[] = { "\033[38;5;226m", // Bright yellow
+const char *COLOURS[] = { "\033[38;5;226m", // Yellow
 		"\033[38;5;214m", // Orange
 		"\033[38;5;210m", // Coral
 		"\033[38;5;198m", // Hot Pink
@@ -75,10 +75,71 @@ void* visualization_thread(void *arg) {
 		printf("\033[2J\033[H"); // Clear screen, move cursor to top left
 		usleep(REFRESH_INTERVAL_MS * 1000); // Wait before next frame
 	}
-	cleanup_visualization();
+	viz_running = false;
 	return NULL;
 }
 
-void cleanup_visualization() {
-	viz_running = false;
+bool is_within_bounds(int x, int y) {
+    return x >= 0 && x < DISPLAY_WIDTH && y >= 0 && y < DISPLAY_HEIGHT;
+}
+
+bool is_overwritable_char(char c) {
+    return c == ' ' || c == '.';
+}
+
+void draw_musician_line(char display[DISPLAY_HEIGHT][DISPLAY_WIDTH + 1],
+                        int colour_map[DISPLAY_HEIGHT][DISPLAY_WIDTH],
+                        int x1, int y1, int x2, int y2,
+                        char symbol, int musician_id) {
+    int delta_x = abs(x2 - x1);
+    int delta_y = abs(y2 - y1);
+    int step_x = (x1 < x2) ? 1 : -1;
+    int step_y = (y1 < y2) ? 1 : -1;
+    int error = delta_x - delta_y; // Initial error value for Bresenham's algorithm
+
+    while (true) {
+        if (is_within_bounds(x1, y1) && is_overwritable_char(display[y1][x1])) {
+            display[y1][x1] = symbol;
+            if (colour_map[y1][x1] == -1) {
+                colour_map[y1][x1] = musician_id; // Assign colour only if unset
+            }
+        }
+
+        if (x1 == x2 && y1 == y2) break; // End of line
+
+        int double_error = 2 * error;
+        if (double_error > -delta_y) {
+            error -= delta_y;
+            x1 += step_x;
+        }
+        if (double_error < delta_x) {
+            error += delta_x;
+            y1 += step_y;
+        }
+    }
+}
+
+void draw_visualization(double target_bpm, double elapsed_seconds) {
+
+	printf("QNX Byzantine Orchestra - Target BPM: %.1f\n", target_bpm);
+
+	char display[DISPLAY_HEIGHT][DISPLAY_WIDTH + 1];
+	int colour_map[DISPLAY_HEIGHT][DISPLAY_WIDTH];
+
+	// Initialize display and colour map
+	for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+		for (int x = 0; x < DISPLAY_WIDTH; x++) {
+			display[y][x] = ' ';
+			colour_map[y][x] = -1;
+		}
+		display[y][DISPLAY_WIDTH] = '\0';
+	}
+
+	// Print display
+	for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+		for (int x = 0; x < DISPLAY_WIDTH; x++) {
+			printf("%c", display[y][x]);
+		}
+		printf("\n");
+	}
 }
