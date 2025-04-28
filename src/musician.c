@@ -2,7 +2,6 @@
 
 void* musician_thread(void* arg) {
     musician_t *musician = (musician_t*) arg;
-    double reported_bpm;
     struct timespec start_time, end_time;
     double elapsed_time;
     double wait_time;
@@ -23,15 +22,12 @@ void* musician_thread(void* arg) {
         // Process the message
         if (msg.type == 1) { // Pulse
             bool byzantine_timing = false;
-            bool report_honestly = true;
 
             if (musician->is_byzantine && rand() % 100 < (BYZANTINE_BEHAVIOR_CHANCE * 100)) {
                 byzantine_timing = true;
-                report_honestly = false;
             }
 
             update_musician_bpm(musician, byzantine_timing);
-            reported_bpm = get_reported_bpm(musician, report_honestly);
 
             MsgReply(rcvid, EOK, NULL, 0);
 
@@ -49,7 +45,7 @@ void* musician_thread(void* arg) {
                 usleep((useconds_t)wait_time);
             }
 
-            play_note_with_viz(musician, reported_bpm);
+            play_note_with_viz(musician);
 
             // Loop notes
             musician->note_index = (musician->note_index + 1) % MAX_NOTES;
@@ -58,7 +54,7 @@ void* musician_thread(void* arg) {
             pulse_msg_t report = {
                 .type = 2,
                 .musician_id = musician->id,
-                .reported_bpm = reported_bpm
+                .reported_bpm = musician->perceived_bpm
             };
 
             if (MsgSend(musician->coid_to_conductor, &report, sizeof(report), NULL, 0) == -1) {
@@ -86,23 +82,7 @@ void update_musician_bpm(musician_t *musician, bool byzantine_timing) {
 	musician->perceived_bpm = add_variance(conductor_bpm, deviation_type);
 }
 
-double get_reported_bpm(musician_t *musician, bool report_honestly) {
-	if (musician->is_first_chair) {
-		if (musician->is_byzantine) {
-			// First chair, if Byzantine, uses first chair deviation for reporting
-			return add_variance(conductor_bpm, DEVIATION_FIRST_CHAIR);
-		} else {
-			// First chair, if not Byzantine, reports its actual perceived BPM
-			return musician->perceived_bpm;
-		}
-	} else if (report_honestly) {
-		return musician->perceived_bpm;
-	} else {
-		return add_variance(conductor_bpm, DEVIATION_NORMAL);
-	}
-}
-
-void play_note(musician_t *musician, double reported_bpm) {
+void play_note(musician_t *musician) {
     const char *status = musician->is_byzantine ? "[BYZANTINE]" : "";
 
     if (musician->is_first_chair && musician->is_byzantine) {
@@ -114,9 +94,9 @@ void play_note(musician_t *musician, double reported_bpm) {
     }
 
     if (musician->is_byzantine || musician->is_first_chair) {
-        printf("%s %s: Playing %s at %.1f BPM (reporting: %.1f BPM)\n",
+        printf("%s %s: Playing %s at %.1f BPM\n",
                 musician->name, status, musician->notes[musician->note_index],
-                musician->perceived_bpm, reported_bpm);
+                musician->perceived_bpm);
     } else {
         printf("%s: Playing %s at %.1f BPM\n", musician->name,
                 musician->notes[musician->note_index], musician->perceived_bpm);

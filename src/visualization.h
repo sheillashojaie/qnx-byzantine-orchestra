@@ -3,14 +3,14 @@
 
 int initialize_visualization();
 void add_note_event(const char* note, double bpm, int musician_id);
-void play_note_with_viz(musician_t *musician, double reported_bpm);
+void play_note_with_viz(musician_t *musician);
 void* visualization_thread(void *arg);
-bool is_within_bounds(int x, int y);
-bool is_overwritable_char(char c);
 void draw_musician_line(char display[DISPLAY_HEIGHT][DISPLAY_WIDTH + 1],
                         int colour_map[DISPLAY_HEIGHT][DISPLAY_WIDTH],
                         int x1, int y1, int x2, int y2,
-                        char symbol, int musician_id);
+                        int musician_id);
+int map_time_to_x(double t, double start_time, int display_time_range, int stretch_factor);
+int map_bpm_to_y(double deviation_percent, double max_deviation_percent);
 void draw_visualization(double target_bpm, double elapsed_seconds);
 
 #endif
