@@ -21,7 +21,7 @@ const char *COLOURS[] = { "\033[38;5;226m", // Yellow
 		"\033[38;5;198m", // Hot Pink
 		"\033[38;5;201m", // Pink
 		"\033[38;5;207m", // Magenta
-		"\033[38;5;213m", // Pale Pink
+		"\033[38;5;213m", // Light Pink
 		};
 
 const char *RESET_COLOUR = "\033[0m";
@@ -99,7 +99,7 @@ void draw_musician_line(char display[DISPLAY_HEIGHT][DISPLAY_WIDTH + 1],
 		// Check is within bounds and is an overwritable character
 		if (x1 >= 0 && x1 < DISPLAY_WIDTH && y1 >= 0 && y1 < DISPLAY_HEIGHT
 				&& (display[y1][x1] == ' ' || display[y1][x1] == '.')) {
-			display[y1][x1] = '.';
+			display[y1][x1] = '*';
 			if (colour_map[y1][x1] == -1) {
 				colour_map[y1][x1] = musician_id; // Assign colour only if unset
 			}
@@ -132,14 +132,13 @@ int map_time_to_x(double t, double start_time, int display_time_range,
 	return x;
 }
 
-int map_bpm_to_y(double deviation_percent, double max_deviation_percent) {
-	int offset = (int) ((deviation_percent * DISPLAY_HEIGHT / 2)
-			/ max_deviation_percent);
-	int y = DISPLAY_HEIGHT / 2 - offset;
-	if (y < 0)
-		return 0;
-	if (y >= DISPLAY_HEIGHT)
-		return DISPLAY_HEIGHT - 1;
+int map_bpm_to_y(double bpm, double min_bpm, double max_bpm) {
+	double range = max_bpm - min_bpm;
+	if (range == 0) return DISPLAY_HEIGHT / 2;
+	double normalized = (bpm - min_bpm) / range;
+	int y = DISPLAY_HEIGHT - 1 - (int)(normalized * (DISPLAY_HEIGHT - 1));
+	if (y < 0) y = 0;
+	if (y >= DISPLAY_HEIGHT) y = DISPLAY_HEIGHT - 1;
 	return y;
 }
 
@@ -150,8 +149,24 @@ void draw_visualization(double target_bpm, double elapsed_seconds) {
 		start_time = 0;
 
 	int stretch_factor = 2;
+	double min_bpm = MIN_BPM - 20;
+	double max_bpm = MAX_BPM + 20;
 
-	printf("QNX Byzantine Orchestra - Target BPM: %.1f\n", target_bpm);
+	printf("QNX Byzantine Orchestra - BPM: %.1f\n", conductor_bpm);
+
+	// Print legend
+	for (int i = 0; i < num_musicians; i++) {
+		const char *musician_name = musician_names[i];
+		const char *byzantine_flag =
+				musicians[i].is_byzantine ? "[Byzantine]" : "";
+		const char *first_chair_flag =
+				musicians[i].is_first_chair ? "[First Chair]" : "";
+		printf("%s%s%s %s%s%s  ",
+				COLOURS[i % (sizeof(COLOURS) / sizeof(COLOURS[0]))],
+				musician_name, RESET_COLOUR, byzantine_flag, first_chair_flag,
+				RESET_COLOUR);
+	}
+	printf("\n");
 
 	char display[DISPLAY_HEIGHT][DISPLAY_WIDTH + 1];
 	int colour_map[DISPLAY_HEIGHT][DISPLAY_WIDTH];
@@ -175,11 +190,8 @@ void draw_visualization(double target_bpm, double elapsed_seconds) {
 			continue;
 
 		// Calculate positions
-		double deviation_percent = 100.0 * (viz.events[i].bpm - target_bpm)
-				/ target_bpm;
-		int x = map_time_to_x(t, start_time, display_time_range,
-				stretch_factor);
-		int y = map_bpm_to_y(deviation_percent, viz.max_deviation_percent);
+		int x = map_time_to_x(t, start_time, display_time_range, stretch_factor);
+		int y = map_bpm_to_y(viz.events[i].bpm, min_bpm, max_bpm);
 		int m_id = viz.events[i].musician_id;
 
 		// Draw connecting line
@@ -205,9 +217,8 @@ void draw_visualization(double target_bpm, double elapsed_seconds) {
 
 	// Print display
 	for (int y = 0; y < DISPLAY_HEIGHT; y++) {
-		double dev = viz.max_deviation_percent
-				* ((double) (DISPLAY_HEIGHT / 2 - y)) / (DISPLAY_HEIGHT / 2.0);
-		printf("%5.1f%% ", dev);
+		double bpm_at_y = max_bpm - ((double)y / (DISPLAY_HEIGHT - 1)) * (max_bpm - min_bpm);
+		printf("%5.1f ", bpm_at_y);
 
 		for (int x = 0; x < DISPLAY_WIDTH; x++) {
 			char c = display[y][x];
@@ -228,16 +239,4 @@ void draw_visualization(double target_bpm, double elapsed_seconds) {
 		printf(" ");
 	printf("%.1fs\n", elapsed_seconds);
 
-	// Print legend
-	for (int i = 0; i < num_musicians; i++) {
-		const char *musician_name = musician_names[i];
-		const char *byzantine_flag =
-				musicians[i].is_byzantine ? "[Byzantine]" : "";
-		const char *first_chair_flag =
-				musicians[i].is_first_chair ? "[First Chair]" : "";
-		printf("%s%s%s %s%s%s  ",
-				COLOURS[i % (sizeof(COLOURS) / sizeof(COLOURS[0]))],
-				musician_name, RESET_COLOUR, byzantine_flag, first_chair_flag,
-				RESET_COLOUR);
-	}
 }

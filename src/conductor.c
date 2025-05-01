@@ -3,8 +3,25 @@
 void* conductor_thread(void *unused_arg) {
     (void) unused_arg;
 
+    double current_bpm = DEFAULT_BPM;
+	conductor_bpm = current_bpm;
+	target_bpm = current_bpm;
+
     for (int pulse_count = 0; pulse_count < MAX_PULSES && program_running; pulse_count++) {
         printf("\n--- Pulse %d ---\n", pulse_count + 1);
+
+        bool bpm_changed = false;
+
+		// Possibly change BPM if pulse count is start of new quarter measure
+        if ((pulse_count) % 4 == 0) {
+			if (rand() % 100 < 50) {
+				// Random BPM between MIN_BPM and MAX_BPM
+				double new_bpm = MIN_BPM + ((double) rand() / RAND_MAX) * (MAX_BPM - MIN_BPM);
+				target_bpm = new_bpm;
+				conductor_bpm = new_bpm;
+				bpm_changed = true;
+			}
+		}
 
         // Send pulse to all musicians
         pulse_msg_t msg = { .type = 1 }; // Pulse
@@ -40,7 +57,7 @@ void* conductor_thread(void *unused_arg) {
         }
 
         // Update conductor's BPM based on reports
-        if (reporting_musicians > 0) {
+        if (!bpm_changed && reporting_musicians > 0) {
             conductor_bpm = total_reported_bpm / reporting_musicians;
             printf("Conductor: Average reported BPM: %.1f\n", conductor_bpm);
         } else {

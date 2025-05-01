@@ -1,8 +1,8 @@
 #include <byzantine_orchestra.h>
 
 int parse_arguments(int argc, char *argv[]) {
-	if (argc < 3) {
-		printf("Usage: %s <num_musicians> <bpm>\n", argv[0]);
+	if (argc < 2) {
+		printf("Usage: %s <num_musicians>\n", argv[0]);
 		return -1;
 	}
 
@@ -12,14 +12,6 @@ int parse_arguments(int argc, char *argv[]) {
                MIN_MUSICIANS, MAX_MUSICIANS);
         return -1;
     }
-
-	conductor_bpm = atof(argv[2]);
-	if (conductor_bpm <= 0) {
-		printf("BPM must be a positive number\n");
-		return -1;
-	}
-
-	target_bpm = conductor_bpm;
 
 	return 0;
 }
