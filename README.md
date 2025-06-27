@@ -1,4 +1,4 @@
-![Byzantine Orchestra Visualization](../images/qnx_byzantine_orchestra_viz.jpg)
+![Byzantine Orchestra Visualization](images/qnx_byzantine_orchestra_viz.jpg)
 
 # QNX Byzantine Orchestra
 
